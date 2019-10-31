@@ -38,9 +38,11 @@ pool.query(creation,(err,res) =>{
 
 
 
-/*app.get("/", (req, res) => {
-    res.json({ msg: "videos" });
+app.get("/", (req, res) => {
+    res.json({ msg: "I'm users-micro, Up & Running" });
 });
+
+/*
 
 app.get("/api/u1/users", async (req, res) => {
     const videos = await Video.find({});
