@@ -1,10 +1,16 @@
 const express = require("express");
 //const Video = require("./models/
 var cors = require('cors');
+var path = require('path');
 const bodyParser = require("body-parser");
 
 const app = express();
 app.use(cors());
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
 app.use(bodyParser.json());
 
 const {Pool,Client} = require('pg')
@@ -58,11 +64,6 @@ app.post("/users/registration", async (req, res) => {
     console.log('got name: ' + user);
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
-    //const video = new User({ name: req.body.name });
-    //const savedVideo = await video.save();
-    //res.json(savedVideo);
-
-    //console.log('pool is:  ' + JSON.stringify(pool));
 
     const text = "INSERT INTO users(username, email,password) VALUES($1, $2,$3) RETURNING *";
     const values = [user,email,psw];
@@ -82,36 +83,41 @@ app.post("/users/registration", async (req, res) => {
 });
 
 
+
 app.post("/users/login", (req, res) => {
 
-    let email= req.body.email;
-    let psw = req.body.psw;
+    let email= req.body.em;
+    let psw = req.body.pass;
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
+    console.log('full url is: ' + req.url);
+    console.log('email and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
 
-    const text = "SELECT FROM users(email,password) VALUES($1, $2) RETURNING *";
-    const values = [email,psw];
+    const text ="SELECT(email,password) FROM users WHERE email='"+email +"' AND password='"+psw +"'";
 
-    pool.query(text,values,(err, res) => {
-        console.log('query LOGIN');
-        if (err) {
-            console.log("error: "  + err);
-            res.json("no logged in");
-        } else {
-            console.log("not error in creation");
-            console.log(res.rows[0]);
-            res.json("logged in");
-            // { name: 'brianc', email: 'brian.m.carlson@gmail.com' }
-        }
+    console.log(JSON.stringify(text));
+    pool.query(text,(err, data) => {
+    console.log('query LOGIN');
+    if (err) {
+        console.log("error: "  + err);
+        res.status(404).json({"error":"not found","err":err});
+        return;
+    } else {
+        //console.log(res.rows[0]);
+        console.log('res is: ' + res);
+        res.status(200);
+        //res.redirect('http://localhost:1337/dashboard_2.html')
+    }
+
     });
-    
-    /*
-    if(req.body.em =="user@email.com" && req.body.pass =="psw"){
-        res.json({ ans: "ok" });
-    };
-*/
-    
+
+    res.status(200);
+
 });
+
+
+
+
 
 
 module.exports = app;
