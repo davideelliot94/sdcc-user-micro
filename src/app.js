@@ -106,7 +106,7 @@ app.post("/users/login", (req, res) => {
         //console.log(res.rows[0]);
         console.log('res is: ' + res);
         //res.status(200);
-        res.redirect('http://localhost:1337/dashboard_2.html')
+        res.redirect('http://localhost:1337/dashboard_2.html');
     }
 
     });
