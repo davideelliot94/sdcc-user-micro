@@ -97,7 +97,7 @@ app.post("/users/login", (req, res) => {
 
     console.log(JSON.stringify(text));
     pool.query(text,(err, data) => {
-    console.log('query LOGIN')
+    console.log('query LOGIN');
     if (err) {
         console.log("error: "  + err);
         res.status(404).json({"error":"not found","err":err});
