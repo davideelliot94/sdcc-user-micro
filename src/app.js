@@ -91,7 +91,7 @@ app.post("/users/login", (req, res) => {
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
     console.log('full url is: ' + req.url);
-    console.log('email and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
+    console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
 
     const text ="SELECT(email,password) FROM users WHERE email='"+email +"' AND password='"+psw +"'";
 
