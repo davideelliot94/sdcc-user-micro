@@ -12,6 +12,8 @@ app.use(function(req, res, next) {
     next();
 });
 app.use(bodyParser.json());
+//app.use(bodyParser());
+
 
 const {Pool,Client} = require('pg')
 
@@ -100,19 +102,16 @@ app.post("/users/login", (req, res) => {
     console.log('query LOGIN');
     if (err) {
         console.log("error: "  + err);
-        res.status(404).json({"error":"not found","err":err});
+        res.status(404).json({"error":"not  found","err":err});
         return;
     } else {
-        //console.log(res.rows[0]);
         console.log('res is: ' + res);
-        //res.status(200);
-        res.redirect('http://localhost:1337/dashboard_2.html');
     }
 
     });
 
     res.status(200);
-
+    res.send("Claudio Santoro");
 });
 
 
