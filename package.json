@@ -4,12 +4,17 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
+    "amazon-cognito-identity-js": "^3.2.0",
+    "aws-sdk": "^2.567.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "pg": "^7.12.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "json-loader": "^0.5.7",
+    "webpack": "^4.41.2"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"

@@ -98,7 +98,7 @@ app.post("/users/login", (req, res) => {
             console.log("error: "  + err);
             res.json("no logged in");
         } else {
-            console.log("not error in creation");
+            console.log("not error in creation ");
             console.log(res.rows[0]);
             res.json("logged in");
             // { name: 'brianc', email: 'brian.m.carlson@gmail.com' }
