@@ -10,6 +10,13 @@ var poolData = { UserPoolId : 'us-east-1_WLaeGxYQd',
     ClientId : '4d76fpsdlldt729bkjufbj7gcb'
 };
 
+
+if (typeof localStorage === "undefined" || localStorage === null) {
+    var LocalStorage = require('node-localstorage').LocalStorage;
+    localStorage = new LocalStorage('./scratch');
+}
+
+
 var userPool = new CognitoUserPool(poolData);
 
 console.log('setting attributes');
@@ -72,8 +79,11 @@ cognitoUser.authenticateUser(authenticationDetails, {
         console.log('Access token: ' + JSON.stringify(accessToken));
         console.log('Id token: ' + JSON.stringify(idToken));
 
-        sessionStorage.setItem('accessToken',accessToken);
-        sessionStorage.setItem('idToken',idToken);
+        localStorage.setItem('accessToken',accessToken);
+        localStorage.setItem('idToken',idToken);
+
+        var accessToken = localStorage.getItem('accessToken');
+        console.log('login, access token is: ' + JSON.stringify(accessToken));
     },
 
     onFailure: function(err) {

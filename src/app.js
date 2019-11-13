@@ -1,28 +1,32 @@
-const express = require("express");
-//const Video = require("./models/
+var express = require("express");
 var cors = require('cors');
-const bodyParser = require("body-parser");
+var bodyParser = require("body-parser");
+var session = require('express-session');
+const {Pool,Client} = require('pg');
+var AWS = require('aws-sdk');
+global.fetch = require('node-fetch');
+var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
+//const Video = require("./models/
+
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const {Pool,Client} = require('pg')
+//app.use(session({secret: 'sdcc'}));
 
 /*******************COGNITO********************/
 
 
-global.fetch = require('node-fetch');
-var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
+
 var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
-const AWS = require('aws-sdk');
 
 var poolData = { UserPoolId : 'us-east-1_WLaeGxYQd',
     ClientId : '4d76fpsdlldt729bkjufbj7gcb'
 };
 
 var userPool = new CognitoUserPool(poolData);
-
+var idToken,accessToken;
 
 
 /*******************************************************/
@@ -67,14 +71,12 @@ app.get("/api/u1/users", async (req, res) => {
     const videos = await Video.find({});
     res.json(videos);
 });*/
-function cognitoLog(email, psw) {
-    var idToken;
-    var accessToken;
+function cognitoLog(email, psw/*,session*/) {
 
     console.log('cognitoLogin!');
     var authenticationData = {
-        Username : 'prova@example.com',// 'closantoro@gmail.com',
-        Password : 'password',
+        Username : email,// 'closantoro@gmail.com',
+        Password : psw,
     };
     var authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
     var poolData = { UserPoolId : 'us-east-1_WLaeGxYQd',
@@ -82,7 +84,7 @@ function cognitoLog(email, psw) {
     };
     var userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
     var userData = {
-        Username : 'prova@example.com',//'closantoro@gmail.com',
+        Username : email,//'closantoro@gmail.com',
         Pool : userPool
     };
     var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
@@ -97,8 +99,6 @@ function cognitoLog(email, psw) {
             console.log('Access token: ' + JSON.stringify(accessToken));
             console.log('Id token: ' + JSON.stringify(idToken));
 
-            sessionStorage.setItem('accessToken',accessToken);
-            sessionStorage.setItem('idToken',idToken);
         },
 
         onFailure: function(err) {
@@ -173,37 +173,34 @@ app.post("/users/registration", async (req, res) => {
 
 app.post("/users/login", (req, res) => {
 
-    console.log('body is: ' + JSON.stringify(req.body));
     let email= req.body.em;
     let psw = req.body.pass;
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
+    console.log('full url is: ' + req.url);
+    console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
 
-    //const text = "SELECT FROM users(email,password) VALUES($1, $2)";//" RETURNING *";
-    const values = [email,psw];
+    const text ="SELECT(email,password) FROM users WHERE email='"+email +"' AND password='"+psw +"'";
 
-    const text = "SELECT * FROM users WHERE  email ='"+email + "' AND password = '" + psw + "';";
-    pool.query(text,/*values,*/(err, res) => {
-        console.log('query LOGIN: ' + text);
-        if (err) {
-            console.log("error: "  + err);
-            res.json("no logged in");
-        } else {
-            console.log("not error in creation ");
-            //console.log(res.rows[0]);
-            //res.json("logged in");
-            cognitoLog(email,psw);
-            // { name: 'brianc', email: 'brian.m.carlson@gmail.com' }
-        }
+    console.log(JSON.stringify(text));
+    pool.query(text,(err, data) => {
+        console.log('query LOGIN');
+    if (err) {
+        console.log("error: "  + err);
+        res.status(404).json({"error":"not  found","err":err});
+       // return;
+    } else {
+        console.log('res is: ' + res);
+        cognitoLog(email,psw);
+    }
+
     });
-    
-    /*
-    if(req.body.em =="user@email.com" && req.body.pass =="psw"){
-        res.json({ ans: "ok" });
-    };
-*/
-    
-});
 
+    console.log('setting accessToken: ' + JSON.stringify(accessToken));
+    res.status(200);
+    res.json({token: accessToken,name: email});
+
+    //res.send("Claudio Santoro");
+});
 
 module.exports = app;
