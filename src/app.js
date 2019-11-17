@@ -243,20 +243,29 @@ app.get("/users/profile/*", (req, res) => {
 
     const text ="SELECT * FROM users WHERE email='"+email +"';";
     console.log(JSON.stringify(text));
-
+    //var rows;
     pool.query(text, function (error, results) {
         if (error) throw error;
-        console.log('The solution is: ', JSON.stringify(results["rows"]));
-        return results["rows"];
+        console.log(results.rows[0].name)
+        var rows = results["rows"];
+        //res.send({msg: 'msg'});
+        res.send({
+            username: results.rows[0].username,
+            name: results.rows[0].name,
+            surname: results.rows[0].surname,
+            email: results.rows[0].email
+        });
+       // console.log('The solution is: ', rows);
+        //console.log('name is: ' + rows["username"]);
+        //res.status(200);
+        //res.send(results);
+        //return results["rows"];
 
     });
 
-// console.log('setting accessToken: ' + JSON.stringify(accessToken));
-    res.status(200);
-    //res.json({token: accessToken,name: email});
-    console.log('response is: ' + response);
-    return response;
-    //res.send("Claudio Santoro");
+
+
+
 });
 
 
