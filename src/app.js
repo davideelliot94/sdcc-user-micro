@@ -4,7 +4,9 @@ var bodyParser = require("body-parser");
 var session = require('express-session');
 const {Pool,Client} = require('pg');
 var AWS = require('aws-sdk');
+var jwt   = require('jsonwebtoken');
 global.fetch = require('node-fetch');
+//var request = require('request');
 var AmazonCognitoIdentity = require('amazon-cognito-identity-js');
 //const Video = require("./models/
 
@@ -32,11 +34,26 @@ var idToken,accessToken;
 /*******************************************************/
 
 
+function findFirstDiffPos(a, b)
+{
+    var shorterLength = Math.min(a.length, b.length);
+
+    for (var i = 0; i < shorterLength; i++)
+    {
+        if (a[i] !== b[i]) return i;
+    }
+
+    if (a.length !== b.length) return shorterLength;
+
+    return -1;
+}
+
+
 const pool = new Pool({
     user:"postgres",
-    host:"database-1.cv1l7z2qnpv7.us-east-1.rds.amazonaws.com",
+    host:"sdccrds.cv1l7z2qnpv7.us-east-1.rds.amazonaws.com",
     //host:"sdccdb.cq0cmm7hsjuw.eu-central-1.rds.amazonaws.com",
-    database:"sdccdb",
+    database:"sdcc_rds",
     password:"postgres",
     port:5432
 });
@@ -44,7 +61,9 @@ const pool = new Pool({
 const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
     'username VARCHAR(50) PRIMARY KEY,' +
     'email VARCHAR(50) NOT NULL,' +
-    'password VARCHAR(10))';
+    'password VARCHAR(10),' +
+    'name VARCHAR(20),' +
+    'surname VARCHAR(20));';
 
 pool.query(creation,(err,res) =>{
     console.log('querying!');
@@ -57,7 +76,6 @@ pool.query(creation,(err,res) =>{
         //console.log(err.stack);
     }
 });
-
 
 
 
@@ -88,7 +106,7 @@ function cognitoLog(email, psw/*,session*/) {
         Pool : userPool
     };
     var cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-    console.log('cognitoUser is: ' + JSON.stringify(cognitoUser));
+   // console.log('cognitoUser is: ' + JSON.stringify(cognitoUser));
     cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: function (result) {
             accessToken = result.getAccessToken().getJwtToken();
@@ -96,8 +114,8 @@ function cognitoLog(email, psw/*,session*/) {
             /* Use the idToken for Logins Map when Federating User Pools with identity pools or when passing through an Authorization Header to an API Gateway Authorizer */
             idToken = result.idToken.jwtToken;
 
-            console.log('Access token: ' + JSON.stringify(accessToken));
-            console.log('Id token: ' + JSON.stringify(idToken));
+           // console.log('Access token: ' + JSON.stringify(accessToken));
+            //console.log('Id token: ' + JSON.stringify(idToken));
 
         },
 
@@ -144,16 +162,20 @@ function cognitoSignUp(email,psw) {
 app.post("/users/registration", async (req, res) => {
     console.log('called');
     console.log('got request: ' + req);
-    let user =req.body.name;
+    let user =req.body.username;
     let email= req.body.email;
     let psw = req.body.psw;
+    let name = req.body.name;
+    let surname = req.body.surname;
     console.log('got name: ' + user);
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
+    console.log('got name: ' + name);
+    console.log('got surname: ' + surname);
 
 
-    const text = "INSERT INTO users(username, email,password) VALUES($1, $2,$3) RETURNING *";
-    const values = [user,email,psw];
+    const text = "INSERT INTO users(username, email,password,name,surname) VALUES($1, $2,$3,$4,$5) RETURNING *";
+    const values = [user,email,psw,name,surname];
 // callback
     pool.query(text,values,(err, res) => {
         console.log('query2');
@@ -162,8 +184,7 @@ app.post("/users/registration", async (req, res) => {
         } else {
             console.log("not error in creation");
             cognitoSignUp(email,psw)
-            //console.log(res.rows[0])
-            // { name: 'brianc', email: 'brian.m.carlson@gmail.com' }
+
         }
     });
 
@@ -196,11 +217,49 @@ app.post("/users/login", (req, res) => {
 
     });
 
-    console.log('setting accessToken: ' + JSON.stringify(accessToken));
+   // console.log('setting accessToken: ' + JSON.stringify(accessToken));
     res.status(200);
     res.json({token: accessToken,name: email});
-
+    return res;
     //res.send("Claudio Santoro");
 });
+
+
+
+
+app.get("/users/profile/*", (req, res) => {
+
+    var response;
+    //var email= req.body.email;
+    var fullUrl = req.url;
+    console.log('full url is: ' + fullUrl);
+    //var index = fullUrl.lastIndexOf("/users/profile/");
+    //console.log('index is: ' + index);
+
+    var index = findFirstDiffPos("/users/profile/*",fullUrl);
+    var email = fullUrl.substring(index);
+
+    console.log('profile, got email: ' + email);
+
+    const text ="SELECT * FROM users WHERE email='"+email +"';";
+    console.log(JSON.stringify(text));
+
+    pool.query(text, function (error, results) {
+        if (error) throw error;
+        console.log('The solution is: ', JSON.stringify(results["rows"]));
+        return results["rows"];
+
+    });
+
+// console.log('setting accessToken: ' + JSON.stringify(accessToken));
+    res.status(200);
+    //res.json({token: accessToken,name: email});
+    console.log('response is: ' + response);
+    return response;
+    //res.send("Claudio Santoro");
+});
+
+
+
 
 module.exports = app;
