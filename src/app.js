@@ -318,4 +318,28 @@ pool.query(text, function (error, results) {
 });
 
 
+app.get("/users/teachers/", (req, res) => {
+
+    var response;
+//var email= req.body.email;
+    var fullUrl = req.url;
+
+    const text ="SELECT count(*) FROM users WHERE role=1;";
+    console.log(JSON.stringify(text));
+//var rows;
+    pool.query(text, function (error, results) {
+        if (error) throw error;
+        console.log(results.rows[0].count)
+        var rows = results["rows"];
+    //res.send({msg: 'msg'});
+        res.send({
+            number:rows[0].count
+        });
+
+    });
+
+});
+
+
+
 module.exports = app;
