@@ -232,9 +232,7 @@ app.get("/users/profile/*", (req, res) => {
     var response;
     //var email= req.body.email;
     var fullUrl = req.url;
-    console.log('full url is: ' + fullUrl);
-    //var index = fullUrl.lastIndexOf("/users/profile/");
-    //console.log('index is: ' + index);
+
 
     var index = findFirstDiffPos("/users/profile/*",fullUrl);
     var email = fullUrl.substring(index);
@@ -263,8 +261,30 @@ app.get("/users/profile/*", (req, res) => {
 
     });
 
+});
 
 
+app.post("/users/profile/save", (req, res) => {
+
+    var email= req.body.email;
+    var newpsw = req.body.psw;
+    var newname = req.body.name;
+    var newsurname = req.body.surname;
+    console.log('got email: ' + email);
+    console.log('got psw: ' + newpsw);
+    console.log('got name: ' + newname);
+    console.log('got surname: ' + newsurname);
+
+    var text = "UPDATE users SET password ='" + newpsw+"', name ='"+newname+"', surname ='"+newsurname+"' WHERE email = '"+email+"';";
+    //var values = [newpsw,newname,newsurname,email];
+    console.log('text is: ' + text);
+    pool.query(text, /*values, */function(err,rows){
+        if (err) {
+            console.log('error is: ' + err);
+            var start = new Date().getTime();
+            while (new Date().getTime() < start + 3000) ;
+        }
+    });
 
 });
 
