@@ -61,9 +61,10 @@ const pool = new Pool({
 const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
     'username VARCHAR(50) PRIMARY KEY,' +
     'email VARCHAR(50) NOT NULL,' +
-    'password VARCHAR(10),' +
+    'password VARCHAR(10) NOT NULL,' +
     'name VARCHAR(20),' +
-    'surname VARCHAR(20));';
+    'surname VARCHAR(20),' +
+    'role INTEGER);';
 
 pool.query(creation,(err,res) =>{
     console.log('querying!');
@@ -167,15 +168,18 @@ app.post("/users/registration", async (req, res) => {
     let psw = req.body.psw;
     let name = req.body.name;
     let surname = req.body.surname;
+    var role = req.body.role;
+
     console.log('got name: ' + user);
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
     console.log('got name: ' + name);
     console.log('got surname: ' + surname);
+    console.log('got role: ' + role);
+    console.log(typeof role);
 
-
-    const text = "INSERT INTO users(username, email,password,name,surname) VALUES($1, $2,$3,$4,$5) RETURNING *";
-    const values = [user,email,psw,name,surname];
+    const text = "INSERT INTO users(username, email,password,name,surname,role) VALUES($1, $2,$3,$4,$5,$6) RETURNING *";
+    const values = [user,email,psw,name,surname,role];
 // callback
     pool.query(text,values,(err, res) => {
         console.log('query2');
@@ -253,11 +257,7 @@ app.get("/users/profile/*", (req, res) => {
             surname: results.rows[0].surname,
             email: results.rows[0].email
         });
-       // console.log('The solution is: ', rows);
-        //console.log('name is: ' + rows["username"]);
-        //res.status(200);
-        //res.send(results);
-        //return results["rows"];
+
 
     });
 
@@ -283,12 +283,39 @@ app.post("/users/profile/save", (req, res) => {
             console.log('error is: ' + err);
             var start = new Date().getTime();
             while (new Date().getTime() < start + 3000) ;
+
+        }
+        else{
+            console.log('not error');
+            res.status(200);
+            res.send();
         }
     });
 
 });
 
+app.get("/users/all/", (req, res) => {
 
+    var response;
+//var email= req.body.email;
+var fullUrl = req.url;
+
+const text ="SELECT count(*) FROM users;";
+console.log(JSON.stringify(text));
+//var rows;
+pool.query(text, function (error, results) {
+    if (error) throw error;
+    console.log(results.rows[0].count)
+    var rows = results["rows"];
+    //res.send({msg: 'msg'});
+    res.send({
+        number:rows[0].count
+    });
+
+
+});
+
+});
 
 
 module.exports = app;
