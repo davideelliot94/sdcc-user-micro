@@ -79,6 +79,29 @@ pool.query(creation,(err,res) =>{
 });
 
 
+/*const subjects = 'CREATE TABLE IF NOT EXISTS "subjects"(' +
+    'id SERIAL,' +
+    'name VARCHAR(30) NOT NULL,' +
+    'teacher_id INTEGER NOT NULL;';
+*/
+
+
+//AGGIUNGERE INITIAL DATA LOADER
+/*pool.query(subjects,(err,res) =>{
+    console.log('querying!');
+    if(err){
+        console.log('error in creation subjects: ' + err);
+    //console.log(err);
+    }
+    else{
+        console.log('not error');
+    //console.log(err.stack);
+    }
+});*/
+
+
+
+
 
 app.get("/", (req, res) => {
     res.json({ msg: "I'm users-micro, Up & Running" });
@@ -200,27 +223,30 @@ app.post("/users/login", (req, res) => {
 
     let email= req.body.em;
     let psw = req.body.pass;
+    var role;
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
     console.log('full url is: ' + req.url);
     console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
 
-    const text ="SELECT(email,password) FROM users WHERE email='"+email +"' AND password='"+psw +"'";
+    const text ="SELECT email,role FROM users WHERE email='"+email +"' AND password='"+psw +"'";
 
     console.log(JSON.stringify(text));
     pool.query(text,(err, data) => {
         console.log('query LOGIN');
-    if (err) {
-        console.log("error: "  + err);
-        res.status(404).json({"error":"not  found","err":err});
+        if (err) {
+            console.log("error: "  + err);
+            res.status(404).json({"error":"not  found","err":err});
        // return;
-    } else {
-        console.log('res is: ' + res);
-        cognitoLog(email,psw);
-    }
+        }
+    console.log('res is: ' + res);
+    cognitoLog(email,psw);
 
+    console.log('data rows[0]: ' + JSON.stringify(data.rows[0].role));
+    role = JSON.stringify(data.rows[0].role);
     });
 
+    console.log('role is ' + role);
    // console.log('setting accessToken: ' + JSON.stringify(accessToken));
     res.status(200);
     res.json({token: accessToken,name: email});
@@ -340,6 +366,27 @@ app.get("/users/teachers/", (req, res) => {
 
 });
 
+
+
+app.get("/users/delete/", (req, res) => {
+
+    var response;
+//var email= req.body.email;
+    var fullUrl = req.url;
+
+    const text ="DELETE FROM users WHERE email='"+req.body.email+"'";
+    console.log(JSON.stringify(text));
+//var rows;
+    pool.query(text, function (error, results) {
+        if (error) throw error;
+        else {
+            console.log('deleted user');
+            res.status(200).send;
+        }
+    });
+
+
+});
 
 
 module.exports = app;
