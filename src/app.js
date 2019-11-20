@@ -219,6 +219,13 @@ app.post("/users/registration", async (req, res) => {
 });
 
 
+
+
+
+
+
+
+/*********************************************
 app.post("/users/login", (req, res) => {
 
     let email= req.body.em;
@@ -238,12 +245,12 @@ app.post("/users/login", (req, res) => {
             console.log("error: "  + err);
             res.status(404).json({"error":"not  found","err":err});
        // return;
-        }
-    console.log('res is: ' + res);
-    cognitoLog(email,psw);
+    }
+        console.log('res is: ' + res);
+        cognitoLog(email,psw);
 
-    console.log('data rows[0]: ' + JSON.stringify(data.rows[0].role));
-    role = JSON.stringify(data.rows[0].role);
+        console.log('data rows[0]: ' + JSON.stringify(data.rows[0].role));
+        role = JSON.stringify(data.rows[0].role);
     });
 
     console.log('role is ' + role);
@@ -254,6 +261,47 @@ app.post("/users/login", (req, res) => {
     //res.send("Claudio Santoro");
 });
 
+/************************************/
+
+
+app.post("/users/login", (req, res) => {
+
+    var email= req.body.em;
+    var psw = req.body.pass;
+    var role;
+    console.log('got email: ' + email);
+    console.log('got psw: ' + psw);
+    console.log('full url is: ' + req.url);
+    console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
+
+    var text ="SELECT name,surname,username,email,role FROM users WHERE email='"+email +"' AND password='"+psw +"'";
+    var role;
+
+    //var values = [newpsw,newname,newsurname,email];
+    console.log('text is: ' + text);
+    pool.query(text, /*values, */function(err,rows){
+        if (err ||rows.rows[0] === undefined) {
+            console.log('error is: ' + err);
+            //var start = new Date().getTime();
+            //while (new Date().getTime() < start + 3000) ;
+            throw err;
+        }
+        else{
+            console.log('row 0: ' + rows.rows[0]);
+            res.status(200);
+            res.json({
+                token: accessToken,
+                username: rows.rows[0].username,
+                name: rows.rows[0].name,
+                surname: rows.rows[0].surname,
+                email: rows.rows[0].email,
+                role: rows.rows[0].role
+            });
+            //return res;
+        }
+    });
+
+});
 
 
 
@@ -273,7 +321,7 @@ app.get("/users/profile/*", (req, res) => {
     console.log(JSON.stringify(text));
     //var rows;
     pool.query(text, function (error, results) {
-        if (error) throw error;
+        if (error || results.rows[0] === undefined) throw error;
         console.log(results.rows[0].name)
         var rows = results["rows"];
         //res.send({msg: 'msg'});
