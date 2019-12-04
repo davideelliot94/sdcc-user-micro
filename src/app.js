@@ -31,7 +31,35 @@ var userPool = new CognitoUserPool(poolData);
 var idToken,accessToken;
 
 
+//var k1 = "6jqcZFFzaqP04u85tWTfAw55ls6PTbiABoDj/5I6LPQ=";
+var k2 = "Sy\\/VW9mfv6T6q3wFOSoQCBMwKG+9ZyW\\/sEE92KI96Pg=";
 /*******************************************************/
+
+
+app.use(function (req, res, next) {
+    // do something with the request
+    var jwtToken;
+    console.log('url is: '  +req.url);
+    var nweText = req.body;
+    if(nweText !== null && nweText !== undefined) {
+        console.log('nweText is: ' + JSON.stringify(nweText));
+
+    }
+    /*if(req.url.includes('/users/profile/')) {
+        var jwtToken = req.get('Authorization');
+        console.log('headers: ' + jwtToken);
+        var decoded = jwt.verify(jwtToken, k2,{ algorithm: ['RS256']});
+        console.log('payload is: ' + decoded);
+    }*/
+
+    //console.log('nwe is: ' + nwe);
+    next(); // MUST call this or the routes will not be hit
+});
+
+
+
+
+
 
 
 function findFirstDiffPos(a, b)
@@ -58,25 +86,28 @@ const pool = new Pool({
     port:5432
 });
 
-const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
-    'username VARCHAR(50) PRIMARY KEY,' +
-    'email VARCHAR(50) NOT NULL,' +
-    'password VARCHAR(10) NOT NULL,' +
-    'name VARCHAR(20),' +
-    'surname VARCHAR(20),' +
-    'role INTEGER);';
+//function createUsers(){
+    const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
+        'id SERIAL PRIMARY KEY,'+
+        'username VARCHAR(50),' +
+        'email VARCHAR(50) NOT NULL,' +
+        'password VARCHAR(10) NOT NULL,' +
+        'name VARCHAR(20),' +
+        'surname VARCHAR(20),' +
+        'role INTEGER);';
 
-pool.query(creation,(err,res) =>{
-    console.log('querying!');
-    if(err){
-        console.log('error in creation: ' + err);
+    pool.query(creation,(err,res) =>{
+        console.log('querying!');
+        if(err){
+            console.log('error in creation: ' + err);
         //console.log(err);
-    }
-    else{
-        console.log('not error');
+        }
+        else{
+            console.log('not error');
         //console.log(err.stack);
-    }
-});
+        }
+    });
+//}
 
 
 /*const subjects = 'CREATE TABLE IF NOT EXISTS "subjects"(' +
@@ -176,14 +207,12 @@ function cognitoSignUp(email,psw) {
         }
         cognitoUser = result.user;
     });
-
-
-
-
 }
 
 
-app.post("/users/registration", async (req, res) => {
+
+app.post("/users/registration", (req, res) => {
+   // createUsers();
     console.log('called');
     console.log('got request: ' + req);
     let user =req.body.username;
@@ -201,17 +230,18 @@ app.post("/users/registration", async (req, res) => {
     console.log('got role: ' + role);
     console.log(typeof role);
 
-    const text = "INSERT INTO users(username, email,password,name,surname,role) VALUES($1, $2,$3,$4,$5,$6) RETURNING *";
+    const text = "INSERT INTO users(username, email,password,name,surname,role) VALUES($1,$2,$3,$4,$5,$6) RETURNING *";
     const values = [user,email,psw,name,surname,role];
 // callback
-    pool.query(text,values,(err, res) => {
+    pool.query(text,values,(err, response) => {
         console.log('query2');
         if (err) {
             console.log("error: "  + err);
+            throw err;
         } else {
             console.log("not error in creation");
-            cognitoSignUp(email,psw)
-
+            res.send({msg:'successful signup'})
+            //cognitoSignUp(email,psw)
         }
     });
 
@@ -280,14 +310,19 @@ app.post("/users/login", (req, res) => {
     //var values = [newpsw,newname,newsurname,email];
     console.log('text is: ' + text);
     pool.query(text, /*values, */function(err,rows){
-        if (err ||rows.rows[0] === undefined) {
+        if (err)/* ||rows.rows[0] === undefined)*/ {
             console.log('error is: ' + err);
-            //var start = new Date().getTime();
-            //while (new Date().getTime() < start + 3000) ;
-            throw err;
+            return err;
+        }
+        if(rows.rows[0] === undefined){
+            res.status(404);
+            res.json({msg: 'Unexisting username'});
+            //return new Error('Unexisting username');
+
         }
         else{
             console.log('row 0: ' + rows.rows[0]);
+            cognitoLog(email,psw);
             res.status(200);
             res.json({
                 token: accessToken,
@@ -321,17 +356,30 @@ app.get("/users/profile/*", (req, res) => {
     console.log(JSON.stringify(text));
     //var rows;
     pool.query(text, function (error, results) {
-        if (error || results.rows[0] === undefined) throw error;
-        console.log(results.rows[0].name)
-        var rows = results["rows"];
-        //res.send({msg: 'msg'});
-        res.send({
-            username: results.rows[0].username,
-            name: results.rows[0].name,
-            surname: results.rows[0].surname,
-            email: results.rows[0].email
-        });
+        //if (error || results.rows[0] === undefined) throw error;
 
+        if (error)/* ||rows.rows[0] === undefined)*/ {
+            console.log('error is: ' + err);
+            return error;
+        }
+        if(results.rows[0] === undefined){
+            console.log('is undefined');
+            res.status(404);
+            res.json({msg: 'Unexisting username'});
+            //return new Error('Unexisting username');
+
+        }
+        else {
+            console.log(results.rows[0].name)
+            var rows = results["rows"];
+            //res.send({msg: 'msg'});
+            res.send({
+                username: results.rows[0].username,
+                name: results.rows[0].name,
+                surname: results.rows[0].surname,
+                email: results.rows[0].email
+            });
+        }
 
     });
 
@@ -370,24 +418,23 @@ app.post("/users/profile/save", (req, res) => {
 
 app.get("/users/all/", (req, res) => {
 
+    console.log('users/all');
     var response;
 //var email= req.body.email;
-var fullUrl = req.url;
-
-const text ="SELECT count(*) FROM users;";
-console.log(JSON.stringify(text));
+    var fullUrl = req.url;
+    const text ="SELECT count(*) FROM users;";
+    console.log(JSON.stringify(text));
 //var rows;
-pool.query(text, function (error, results) {
-    if (error) throw error;
-    console.log(results.rows[0].count)
-    var rows = results["rows"];
-    //res.send({msg: 'msg'});
-    res.send({
-        number:rows[0].count
+    pool.query(text, function (error, results) {
+        if (error) throw error;
+        console.log(results.rows[0].count)
+        var rows = results["rows"];
+        //res.send({msg: 'msg'});
+        res.send({
+            number:rows[0].count
+        });
+
     });
-
-
-});
 
 });
 
