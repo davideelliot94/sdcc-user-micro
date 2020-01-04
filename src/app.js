@@ -31,8 +31,8 @@ var userPool = new CognitoUserPool(poolData);
 var idToken,accessToken;
 
 
-//var k1 = "6jqcZFFzaqP04u85tWTfAw55ls6PTbiABoDj/5I6LPQ=";
-var k2 = "Sy\\/VW9mfv6T6q3wFOSoQCBMwKG+9ZyW\\/sEE92KI96Pg=";
+var k1 = "6jqcZFFzaqP04u85tWTfAw55ls6PTbiABoDj/5I6LPQ=";
+var k2 = "Sy/VW9mfv6T6q3wFOSoQCBMwKG+9ZyW/sEE92KI96Pg=";
 /*******************************************************/
 
 
@@ -45,19 +45,36 @@ app.use(function (req, res, next) {
         console.log('nweText is: ' + JSON.stringify(nweText));
 
     }
-    /*if(req.url.includes('/users/profile/')) {
+    if((req.url !== '/users/login') && (req.url !== '/users/registration') && (req.url !== '/users/qUrl') ) {
         var jwtToken = req.get('Authorization');
         console.log('headers: ' + jwtToken);
-        var decoded = jwt.verify(jwtToken, k2,{ algorithm: ['RS256']});
-        console.log('payload is: ' + decoded);
-    }*/
+
+	const Verifier = require('verify-cognito-token');
+	const params = {
+  		region: 'us-east-1',
+  		userPoolId: 'us-east-1_WLaeGxYQd'
+	}
+	const verifier = new Verifier(params);
+ 
+	verifier.verify(jwtToken).then(function (data) {
+		if(data === true)
+			console.log("it's true!");
+                console.log("Query Item succeeded: ", JSON.stringify(data));
+	
+
+        }).catch(function (err) {
+		res.status(401);
+            	res.json({msg: 'Token Expired'});
+                console.log("Error: ", JSON.stringify(err));
+        });
+
+       // var decoded = jwt.verify(jwtToken, k2,{ algorithm: ['RS256']});
+       // console.log('payload is: ' + decoded);
+    }
 
     //console.log('nwe is: ' + nwe);
     next(); // MUST call this or the routes will not be hit
 });
-
-
-
 
 
 
@@ -86,8 +103,7 @@ const pool = new Pool({
     port:5432
 });
 
-//function createUsers(){
-    const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
+const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
         'id SERIAL PRIMARY KEY,'+
         'username VARCHAR(50),' +
         'email VARCHAR(50) NOT NULL,' +
@@ -96,7 +112,7 @@ const pool = new Pool({
         'surname VARCHAR(20),' +
         'role INTEGER);';
 
-    pool.query(creation,(err,res) =>{
+pool.query(creation,(err,res) =>{
         console.log('querying!');
         if(err){
             console.log('error in creation: ' + err);
@@ -106,30 +122,28 @@ const pool = new Pool({
             console.log('not error');
         //console.log(err.stack);
         }
-    });
-//}
+});
 
 
-/*const subjects = 'CREATE TABLE IF NOT EXISTS "subjects"(' +
-    'id SERIAL,' +
-    'name VARCHAR(30) NOT NULL,' +
-    'teacher_id INTEGER NOT NULL;';
-*/
+
+const list_creation = 'CREATE TABLE IF NOT EXISTS "list_association"(' +
+	'id SERIAL PRIMARY KEY,'+
+        'username VARCHAR(20),' +
+        'topicName VARCHAR(10) NOT NULL,' +
+        'url VARCHAR(80) NOT NULL);';
 
 
-//AGGIUNGERE INITIAL DATA LOADER
-/*pool.query(subjects,(err,res) =>{
-    console.log('querying!');
-    if(err){
-        console.log('error in creation subjects: ' + err);
-    //console.log(err);
-    }
-    else{
-        console.log('not error');
-    //console.log(err.stack);
-    }
-});*/
+pool.query(list_creation, function(err,rows){
+        if (err) {
+	    console.log('error list');
+            var start = new Date().getTime();
+            while (new Date().getTime() < start + 3000) ;
 
+        }
+        else{
+            console.log('not error');
+        }
+});
 
 
 
@@ -138,13 +152,8 @@ app.get("/", (req, res) => {
     res.json({ msg: "I'm users-micro, Up & Running" });
 });
 
-/*
 
-app.get("/api/u1/users", async (req, res) => {
-    const videos = await Video.find({});
-    res.json(videos);
-});*/
-function cognitoLog(email, psw/*,session*/) {
+function cognitoLog(email, psw,res,rows) {
 
     console.log('cognitoLogin!');
     var authenticationData = {
@@ -165,10 +174,19 @@ function cognitoLog(email, psw/*,session*/) {
     cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: function (result) {
             accessToken = result.getAccessToken().getJwtToken();
-
+	    console.log('got access token: ' + JSON.stringify(accessToken));
             /* Use the idToken for Logins Map when Federating User Pools with identity pools or when passing through an Authorization Header to an API Gateway Authorizer */
             idToken = result.idToken.jwtToken;
-
+            console.log('sending results');
+            res.status(200);
+            res.json({
+                token: accessToken,
+                username: rows.rows[0].username,
+                name: rows.rows[0].name,
+                surname: rows.rows[0].surname,
+                email: rows.rows[0].email,
+                role: rows.rows[0].role
+            });
            // console.log('Access token: ' + JSON.stringify(accessToken));
             //console.log('Id token: ' + JSON.stringify(idToken));
 
@@ -215,11 +233,11 @@ app.post("/users/registration", (req, res) => {
    // createUsers();
     console.log('called');
     console.log('got request: ' + req);
-    let user =req.body.username;
-    let email= req.body.email;
-    let psw = req.body.psw;
-    let name = req.body.name;
-    let surname = req.body.surname;
+    var user =req.body.username;
+    var email= req.body.email;
+    var psw = req.body.psw;
+    var name = req.body.name;
+    var surname = req.body.surname;
     var role = req.body.role;
 
     console.log('got name: ' + user);
@@ -239,9 +257,9 @@ app.post("/users/registration", (req, res) => {
             console.log("error: "  + err);
             throw err;
         } else {
+            cognitoSignUp(email,psw);
             console.log("not error in creation");
             res.send({msg:'successful signup'})
-            //cognitoSignUp(email,psw)
         }
     });
 
@@ -252,46 +270,6 @@ app.post("/users/registration", (req, res) => {
 
 
 
-
-
-
-/*********************************************
-app.post("/users/login", (req, res) => {
-
-    let email= req.body.em;
-    let psw = req.body.pass;
-    var role;
-    console.log('got email: ' + email);
-    console.log('got psw: ' + psw);
-    console.log('full url is: ' + req.url);
-    console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
-
-    const text ="SELECT email,role FROM users WHERE email='"+email +"' AND password='"+psw +"'";
-
-    console.log(JSON.stringify(text));
-    pool.query(text,(err, data) => {
-        console.log('query LOGIN');
-        if (err) {
-            console.log("error: "  + err);
-            res.status(404).json({"error":"not  found","err":err});
-       // return;
-    }
-        console.log('res is: ' + res);
-        cognitoLog(email,psw);
-
-        console.log('data rows[0]: ' + JSON.stringify(data.rows[0].role));
-        role = JSON.stringify(data.rows[0].role);
-    });
-
-    console.log('role is ' + role);
-   // console.log('setting accessToken: ' + JSON.stringify(accessToken));
-    res.status(200);
-    res.json({token: accessToken,name: email});
-    return res;
-    //res.send("Claudio Santoro");
-});
-
-/************************************/
 
 
 app.post("/users/login", (req, res) => {
@@ -322,16 +300,8 @@ app.post("/users/login", (req, res) => {
         }
         else{
             console.log('row 0: ' + rows.rows[0]);
-            cognitoLog(email,psw);
-            res.status(200);
-            res.json({
-                token: accessToken,
-                username: rows.rows[0].username,
-                name: rows.rows[0].name,
-                surname: rows.rows[0].surname,
-                email: rows.rows[0].email,
-                role: rows.rows[0].role
-            });
+            return cognitoLog(email,psw,res,rows);
+
             //return res;
         }
     });
@@ -347,7 +317,7 @@ app.get("/users/profile/*", (req, res) => {
     var fullUrl = req.url;
 
 
-    var index = findFirstDiffPos("/users/profile/*",fullUrl);
+    var index = findFirstDiffPos("/users/profile/",fullUrl);
     var email = fullUrl.substring(index);
 
     console.log('profile, got email: ' + email);
@@ -386,6 +356,161 @@ app.get("/users/profile/*", (req, res) => {
 });
 
 
+
+
+
+
+
+app.get("/users/lists/*", (req, res) => {
+
+    var response;
+    //var email= req.body.email;
+    var fullUrl = req.url;
+
+
+    var index = findFirstDiffPos("/users/lists/",fullUrl);
+    var usern = fullUrl.substring(index);
+
+    console.log('profile, got usern: ' + usern);
+
+    const text ="SELECT topicname,url FROM list_association WHERE username<>'"+usern +"' and url LIKE '%sns%';";
+    console.log(JSON.stringify(text));
+    //var rows;
+    pool.query(text, function (error, results) {
+        //if (error || results.rows[0] === undefined) throw error;
+
+        if (error)/* ||rows.rows[0] === undefined)*/ {
+            console.log('error is: ' + err);
+            return error;
+        }
+        if(results.rows[0] === undefined){
+            console.log('is undefined');
+            res.status(404);
+            res.json({msg: 'Unexisting username'});
+            //return new Error('Unexisting username');
+
+        }
+        else {
+            var arrayRes = [];
+            var length = results.rows.length;
+            var x;
+            for(x = 0; x < length; x ++) {
+                var list = [results.rows[x].topicname, results.rows[x].url];
+                arrayRes.push(list);
+            }
+            console.log('final array is: ' + arrayRes);
+            res.json(arrayRes);
+
+        }
+
+    });
+
+});
+
+
+
+app.get("/users/lists2/*", (req, res) => {
+
+    var response;
+    //var email= req.body.email;
+    var fullUrl = req.url;
+
+
+    var index = findFirstDiffPos("/users/lists2/",fullUrl);
+    var usern = fullUrl.substring(index);
+
+    console.log('profile, got usern: ' + usern);
+
+    const text ="SELECT DISTINCT topicname,url FROM list_association WHERE username='"+usern +"';";
+    console.log(JSON.stringify(text));
+    //var rows;
+    pool.query(text, function (error, results) {
+        //if (error || results.rows[0] === undefined) throw error;
+
+        if (error)/* ||rows.rows[0] === undefined)*/ {
+            console.log('error is: ' + error);
+            return error;
+        }
+        if(results.rows[0] === undefined){
+            console.log('is undefined');
+            res.status(404);
+            res.json({msg: 'Unexisting username'});
+            //return new Error('Unexisting username');
+
+        }
+        else {
+            var rows = results["rows"];
+            //res.send({msg: 'msg'});
+	    var arrayRes = [];
+	    var length = results.rows.length;
+	    var x;
+	    for(x = 0; x < length; x ++) {
+            var list = [results.rows[x].topicname, results.rows[x].url];
+            arrayRes.push(list);
+        }
+	    console.log('final array is: ' + arrayRes);
+            res.json(arrayRes);
+        }
+
+    });
+
+});
+
+
+
+
+
+
+app.get("/users/qUrl/*", (req, res) => {
+
+    var response;
+    //var email= req.body.email;
+    var fullUrl = req.url;
+
+
+    var index = findFirstDiffPos("/users/qUrl/",fullUrl);
+    var receiver = fullUrl.substring(index);
+
+    console.log('profile, got receiver: ' + receiver);
+
+    const text ="SELECT l.url FROM users u JOIN list_association l ON (l.username=u.username) WHERE u.username='"+receiver+"'  AND l.url LIKE '%sqs%'";
+
+    console.log(JSON.stringify(text));
+    //var rows;
+    pool.query(text, function (error, results) {
+        //if (error || results.rows[0] === undefined) throw error;
+
+        if (error)/* ||rows.rows[0] === undefined)*/ {
+            console.log('error is: ' + err);
+            return error;
+        }
+        if(results.rows[0] === undefined){
+            console.log('is undefined');
+            res.status(404);
+            res.json({msg: 'Unexisting username'});
+            //return new Error('Unexisting username');
+
+        }
+        else {
+	    console.log('rows: ' + JSON.stringify(results["rows"]));
+	    var resUrl = results.rows[0].url;
+            var rows = results["rows"];
+	    console.log('rows2: ' + JSON.stringify(rows));
+            console.log('got url: ' + JSON.stringify(rows[0].url));
+            //var rows = results["rows"];
+            //res.send({msg: 'msg'});
+            res.json({
+                qUrl: rows[0].url
+            });
+        }
+
+    });
+
+});
+
+
+
+
 app.post("/users/profile/save", (req, res) => {
 
     var email= req.body.email;
@@ -415,6 +540,41 @@ app.post("/users/profile/save", (req, res) => {
     });
 
 });
+
+
+
+
+
+
+app.post("/users/associate/", (req, res) => {
+
+    var topicName = req.body.topicName;
+    var username = req.body.usern;
+    var url = req.body.url;
+
+    console.log('got topicName: ' + topicName);
+    console.log('got user: ' + username);
+    console.log('got url: ' + url);
+
+
+    const text = "INSERT INTO list_association(username,topicName,url) VALUES($1,$2,$3) RETURNING *";
+    const values = [username,topicName,url];
+// callback
+    pool.query(text,values,(err, response) => {
+        console.log('query2');
+        if (err) {
+            console.log("error: "  + err);
+            throw err;
+        } else {
+            console.log("not error in creation");
+            res.send({msg:'successful signup'})
+            //cognitoSignUp(email,psw)
+        }
+    });
+});
+
+
+
 
 app.get("/users/all/", (req, res) => {
 
