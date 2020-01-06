@@ -105,8 +105,8 @@ const pool = new Pool({
 
 const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
         'id SERIAL PRIMARY KEY,'+
-        'username VARCHAR(50),' +
-        'email VARCHAR(50) NOT NULL,' +
+        'username VARCHAR(50) UNIQUE,' +
+        'email VARCHAR(50) NOT NULL UNIQUE,' +
         'password VARCHAR(10) NOT NULL,' +
         'name VARCHAR(20),' +
         'surname VARCHAR(20),' +
@@ -126,16 +126,17 @@ pool.query(creation,(err,res) =>{
 
 
 
-const list_creation = 'CREATE TABLE IF NOT EXISTS "list_association"(' +
-	'id SERIAL PRIMARY KEY,'+
-        'username VARCHAR(20),' +
+const list_creation = 'CREATE TABLE IF NOT EXISTS list_association(' +
+        'username VARCHAR(20) NOT NULL,' +
         'topicName VARCHAR(10) NOT NULL,' +
-        'url VARCHAR(80) NOT NULL);';
+        'url VARCHAR(80) NOT NULL,'+
+        'PRIMARY KEY(username,topicName)' +
+        ');';
 
 
 pool.query(list_creation, function(err,rows){
         if (err) {
-	    console.log('error list');
+	    console.log('error list: ' + err);
             var start = new Date().getTime();
             while (new Date().getTime() < start + 3000) ;
 
