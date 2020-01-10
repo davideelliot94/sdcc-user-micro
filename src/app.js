@@ -104,10 +104,10 @@ const pool = new Pool({
 });
 
 const creation = 'CREATE TABLE IF NOT EXISTS "users"(' +
-        'id SERIAL PRIMARY KEY,'+
+        'id bigint PRIMARY KEY,'+
         'username VARCHAR(50) UNIQUE,' +
         'email VARCHAR(50) NOT NULL UNIQUE,' +
-        'password VARCHAR(10) NOT NULL,' +
+        'password VARCHAR(150) NOT NULL,' +
         'name VARCHAR(20),' +
         'surname VARCHAR(20),' +
         'role INTEGER);';
@@ -120,31 +120,32 @@ pool.query(creation,(err,res) =>{
         }
         else{
             console.log('not error');
-        //console.log(err.stack);
-        }
-});
-
-
-
-const list_creation = 'CREATE TABLE IF NOT EXISTS list_association(' +
-        'username VARCHAR(20) NOT NULL,' +
-        'topicName VARCHAR(10) NOT NULL,' +
-        'url VARCHAR(80) NOT NULL,'+
-        'PRIMARY KEY(username,topicName)' +
-        ');';
-
-
-pool.query(list_creation, function(err,rows){
+	    const list_creation = 'CREATE TABLE IF NOT EXISTS list_association(' +
+            'username VARCHAR(20) NOT NULL REFERENCES users(username) ON UPDATE CASCADE ON DELETE CASCADE,' +
+            'topicName VARCHAR(10) NOT NULL,' +
+            'url VARCHAR(180) NOT NULL,'+
+	    'type INTEGER NOT NULL,'+
+            'PRIMARY KEY(username,topicName)' +
+            ');';
+	    pool.query(list_creation, function(err,rows){
         if (err) {
 	    console.log('error list: ' + err);
-            var start = new Date().getTime();
-            while (new Date().getTime() < start + 3000) ;
 
         }
         else{
             console.log('not error');
         }
 });
+
+        //console.log(err.stack);
+        }
+});
+
+
+
+
+
+
 
 
 
@@ -240,6 +241,8 @@ app.post("/users/registration", (req, res) => {
     var name = req.body.name;
     var surname = req.body.surname;
     var role = req.body.role;
+    var rInt =Math.floor(Math.random() * 1000000) + 1;
+
 
     console.log('got name: ' + user);
     console.log('got email: ' + email);
@@ -249,9 +252,17 @@ app.post("/users/registration", (req, res) => {
     console.log('got role: ' + role);
     console.log(typeof role);
 
-    const text = "INSERT INTO users(username, email,password,name,surname,role) VALUES($1,$2,$3,$4,$5,$6) RETURNING *";
-    const values = [user,email,psw,name,surname,role];
-// callback
+    var criptedPsw = '~{ry*I)==yU/]9<7DPk!Hj"R#:'+psw+'-/Z7(hTBnlRS=4CXF';
+    var urlCrypt = require('url-crypt')(criptedPsw);
+    var base64Psw = urlCrypt.cryptObj(psw);
+    console.log('base64 is: ' + base64Psw);
+    //console.log('size is: ' + base64Psw);
+
+
+    const text = "INSERT INTO users(id,username, email,password,name,surname,role) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *";
+    const values = [rInt,user,email,base64Psw,name,surname,role];
+
+
     pool.query(text,values,(err, response) => {
         console.log('query2');
         if (err) {
@@ -276,14 +287,19 @@ app.post("/users/registration", (req, res) => {
 app.post("/users/login", (req, res) => {
 
     var email= req.body.em;
-    var psw = req.body.pass;
+    var psw= req.body.pass;
     var role;
     console.log('got email: ' + email);
     console.log('got psw: ' + psw);
     console.log('full url is: ' + req.url);
     console.log('e mail and psw: ' + JSON.stringify(email) + '   ' + JSON.stringify(psw));
 
-    var text ="SELECT name,surname,username,email,role FROM users WHERE email='"+email +"' AND password='"+psw +"'";
+    /*var uncriptedPsw = req.body.pass;
+    var criptedString = '~{ry*I)==yU/]9<7DPk!Hj"R#:'+uncriptedPsw+'-/Z7(hTBnlRS=4CXF';
+    var urlCrypt = require('url-crypt')(criptedString);
+    var psw = urlCrypt.cryptObj(criptedPsw);*/
+
+var text ="SELECT * FROM users WHERE email='"+email +"';";
     var role;
 
     //var values = [newpsw,newname,newsurname,email];
@@ -300,9 +316,21 @@ app.post("/users/login", (req, res) => {
 
         }
         else{
-            console.log('row 0: ' + rows.rows[0]);
-            return cognitoLog(email,psw,res,rows);
+	    var criptedString = '~{ry*I)==yU/]9<7DPk!Hj"R#:'+psw+'-/Z7(hTBnlRS=4CXF';
+    	    var urlCrypt = require('url-crypt')(criptedString);
+            console.log('row 0: ' + rows.rows[0].password);
+            var base64 = urlCrypt.decryptObj(rows.rows[0].password);
+	    if(base64 == psw){
+		console.log('correct psw');
+            	return cognitoLog(email,psw,res,rows);
+	    }
+            else{
+		console.log('rows psw: ' + rows.rows[0].password);
+		console.log('base64: ' + base64);
+		console.log('inserted psw: ' + psw);
+		res.json({msg: 'Incorrect password'});
 
+	    }
             //return res;
         }
     });
@@ -374,7 +402,9 @@ app.get("/users/lists/*", (req, res) => {
 
     console.log('profile, got usern: ' + usern);
 
-    const text ="SELECT topicname,url FROM list_association WHERE username<>'"+usern +"' and url LIKE '%sns%';";
+
+     const text ="SELECT topicname,url FROM list_association where username<>'"+usern+"' AND type=1 AND topicname NOT IN(SELECT topicname 			FROM list_association WHERE username='"+usern+"');";	
+
     console.log(JSON.stringify(text));
     //var rows;
     pool.query(text, function (error, results) {
@@ -478,34 +508,7 @@ app.get("/users/qUrl/*", (req, res) => {
 
     console.log(JSON.stringify(text));
     //var rows;
-    pool.query(text, function (error, results) {
-        //if (error || results.rows[0] === undefined) throw error;
 
-        if (error)/* ||rows.rows[0] === undefined)*/ {
-            console.log('error is: ' + err);
-            return error;
-        }
-        if(results.rows[0] === undefined){
-            console.log('is undefined');
-            res.status(404);
-            res.json({msg: 'Unexisting username'});
-            //return new Error('Unexisting username');
-
-        }
-        else {
-	    console.log('rows: ' + JSON.stringify(results["rows"]));
-	    var resUrl = results.rows[0].url;
-            var rows = results["rows"];
-	    console.log('rows2: ' + JSON.stringify(rows));
-            console.log('got url: ' + JSON.stringify(rows[0].url));
-            //var rows = results["rows"];
-            //res.send({msg: 'msg'});
-            res.json({
-                qUrl: rows[0].url
-            });
-        }
-
-    });
 
 });
 
